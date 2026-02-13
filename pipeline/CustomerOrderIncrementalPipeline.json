@@ -440,21 +440,21 @@
 						},
 						"RowsInserted": {
 							"value": {
-								"value": "@if(\n    and(\n        contains(activity('Load_From_stagingTo_ProductionTable'), 'output'),\n        and(\n            contains(activity('Load_From_stagingTo_ProductionTable').output, 'rowsCopied'),\n            not(equals(activity('Load_From_stagingTo_ProductionTable').output.rowsCopied, null))\n        )\n    ),\n    activity('Load_From_stagingTo_ProductionTable').output.rowsCopied,\n    0\n)",
+								"value": "@if(\n    or(\n        equals(activity('Load_From_stagingTo_ProductionTable').output, null),\n        equals(activity('Load_From_stagingTo_ProductionTable').output.rowsCopied, null)\n    ),\n    0,\n    activity('Load_From_stagingTo_ProductionTable').output.rowsCopied\n)",
 								"type": "Expression"
 							},
 							"type": "Int64"
 						},
 						"RowsRead": {
 							"value": {
-								"value": "@if(\n    and(\n        contains(activity('Load_From_stagingTo_ProductionTable').output, 'rowsRead'),\n        not(equals(activity('Load_From_stagingTo_ProductionTable').output.rowsRead, null))\n    ),\n    activity('Load_From_stagingTo_ProductionTable').output.rowsRead,\n    0\n)",
+								"value": "@if(\n    or(\n        equals(activity('Load_From_stagingTo_ProductionTable').output, null),\n        equals(activity('Load_From_stagingTo_ProductionTable').output.rowsRead, null)\n    ),\n    0,\n    activity('Load_From_stagingTo_ProductionTable').output.rowsRead\n)",
 								"type": "Expression"
 							},
 							"type": "Int64"
 						},
 						"RowsUpdated": {
 							"value": {
-								"value": "@if(\n    and(\n        contains(activity('Load_From_stagingTo_ProductionTable'), 'output'),\n        and(\n            contains(activity('Load_From_stagingTo_ProductionTable').output, 'rowsCopied'),\n            not(equals(activity('Load_From_stagingTo_ProductionTable').output.rowsCopied, null))\n        )\n    ),\n    activity('Load_From_stagingTo_ProductionTable').output.rowsCopied,\n    0\n)",
+								"value": "@if(\n    or(\n        equals(activity('Load_From_stagingTo_ProductionTable').output, null),\n        equals(activity('Load_From_stagingTo_ProductionTable').output.rowsCopied, null)\n    ),\n    0,\n    activity('Load_From_stagingTo_ProductionTable').output.rowsCopied\n)",
 								"type": "Expression"
 							},
 							"type": "Int64"
