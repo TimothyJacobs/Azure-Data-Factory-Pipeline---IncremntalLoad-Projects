@@ -373,6 +373,97 @@
 						}
 					]
 				}
+			},
+			{
+				"name": "Stored procedure1",
+				"type": "SqlServerStoredProcedure",
+				"state": "Inactive",
+				"onInactiveMarkAs": "Succeeded",
+				"dependsOn": [
+					{
+						"activity": "If Condition1",
+						"dependencyConditions": [
+							"Skipped"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[usp_InsertADFLoadControl]",
+					"storedProcedureParameters": {
+						"ActivityName": {
+							"value": "",
+							"type": "String"
+						},
+						"ErrorMessage": {
+							"value": "",
+							"type": "String"
+						},
+						"LoadStatus": {
+							"value": "",
+							"type": "String"
+						},
+						"LoadType": {
+							"value": "",
+							"type": "String"
+						},
+						"PipelineName": {
+							"value": "",
+							"type": "String"
+						},
+						"PipelineRunID": {
+							"value": "",
+							"type": "String"
+						},
+						"RowsInserted": {
+							"value": "",
+							"type": "Int64"
+						},
+						"RowsRead": {
+							"value": "",
+							"type": "Int64"
+						},
+						"RowsUpdated": {
+							"value": "",
+							"type": "Int64"
+						},
+						"SourceObject": {
+							"value": "",
+							"type": "String"
+						},
+						"SourceSystem": {
+							"value": "",
+							"type": "String"
+						},
+						"TargetSchema": {
+							"value": "",
+							"type": "String"
+						},
+						"TargetTable": {
+							"value": "",
+							"type": "String"
+						},
+						"WatermarkColumn": {
+							"value": "",
+							"type": "String"
+						},
+						"WatermarkValue": {
+							"value": "",
+							"type": "DateTime"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				}
 			}
 		],
 		"parameters": {
