@@ -208,7 +208,7 @@
 								"source": {
 									"type": "AzureSqlSource",
 									"sqlReaderQuery": {
-										"value": "SELECT *\nFROM @{pipeline().parameters.Stagingschema_name}.@{pipeline().parameters.Stagingtable_name}\nWHERE LOADDATE > @{activity('watermark').output.firstRow.LOADDATE}\nAND LOADDATE > @{activity('watermark_AuditTable').output.firstRow.LOADDATE}",
+										"value": "SELECT *\nFROM @{pipeline().parameters.Stagingschema_name}.@{pipeline().parameters.Stagingtable_name}\nWHERE LOADDATE > '@{activity('watermark').output.firstRow.lastupdateddate}'\nAND LOADDATE > '@{activity('watermark_AuditTable').output.firstRow.LastWatermarkValue}'",
 										"type": "Expression"
 									},
 									"queryTimeout": "02:00:00",
@@ -333,7 +333,7 @@
 										{
 											"name": "lastupdateddate",
 											"value": {
-												"value": "@activity('MAX_WaterMark').output.firstRow",
+												"value": "@activity('MAX_WaterMark').output.firstRow.Maxdate",
 												"type": "Expression"
 											}
 										}
@@ -377,13 +377,11 @@
 			{
 				"name": "Stored procedure1",
 				"type": "SqlServerStoredProcedure",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "If Condition1",
 						"dependencyConditions": [
-							"Skipped"
+							"Completed"
 						]
 					}
 				],
@@ -399,63 +397,108 @@
 					"storedProcedureName": "[dbo].[usp_InsertADFLoadControl]",
 					"storedProcedureParameters": {
 						"ActivityName": {
-							"value": "",
+							"value": {
+								"value": "@pipeline().Pipeline",
+								"type": "Expression"
+							},
 							"type": "String"
 						},
 						"ErrorMessage": {
-							"value": "",
+							"value": {
+								"value": "@if(\n    contains(string(activity('Load_From_stagingTo_ProductionTable')), 'Succeeded'),\n    'Success',\n    if(\n        contains(string(activity('Load_From_stagingTo_ProductionTable')), 'Failed'),\n        activity('Load_From_stagingTo_ProductionTable').error.message,\n        'Success - No Data'\n    )\n)\n",
+								"type": "Expression"
+							},
 							"type": "String"
 						},
 						"LoadStatus": {
-							"value": "",
+							"value": {
+								"value": "@pipeline().TriggerType",
+								"type": "Expression"
+							},
 							"type": "String"
 						},
 						"LoadType": {
-							"value": "",
+							"value": {
+								"value": "@if(\n    contains(string(activity('Load_From_stagingTo_ProductionTable')), 'Succeeded'),\n    'Success',\n    if(\n        contains(string(activity('Load_From_stagingTo_ProductionTable')), 'Failed'),\n        activity('Load_From_stagingTo_ProductionTable').error.message,\n        'Success - No Data'\n    )\n)\n",
+								"type": "Expression"
+							},
 							"type": "String"
 						},
 						"PipelineName": {
-							"value": "",
+							"value": {
+								"value": "@pipeline().Pipeline",
+								"type": "Expression"
+							},
 							"type": "String"
 						},
 						"PipelineRunID": {
-							"value": "",
+							"value": {
+								"value": "@pipeline().TriggerId",
+								"type": "Expression"
+							},
 							"type": "String"
 						},
 						"RowsInserted": {
-							"value": "",
+							"value": {
+								"value": "@if(\n    and(\n        contains(activity('Load_From_stagingTo_ProductionTable'), 'output'),\n        and(\n            contains(activity('Load_From_stagingTo_ProductionTable').output, 'rowsCopied'),\n            not(equals(activity('Load_From_stagingTo_ProductionTable').output.rowsCopied, null))\n        )\n    ),\n    activity('Load_From_stagingTo_ProductionTable').output.rowsCopied,\n    0\n)",
+								"type": "Expression"
+							},
 							"type": "Int64"
 						},
 						"RowsRead": {
-							"value": "",
+							"value": {
+								"value": "@if(\n    and(\n        contains(activity('Load_From_stagingTo_ProductionTable').output, 'rowsRead'),\n        not(equals(activity('Load_From_stagingTo_ProductionTable').output.rowsRead, null))\n    ),\n    activity('Load_From_stagingTo_ProductionTable').output.rowsRead,\n    0\n)",
+								"type": "Expression"
+							},
 							"type": "Int64"
 						},
 						"RowsUpdated": {
-							"value": "",
+							"value": {
+								"value": "@if(\n    and(\n        contains(activity('Load_From_stagingTo_ProductionTable'), 'output'),\n        and(\n            contains(activity('Load_From_stagingTo_ProductionTable').output, 'rowsCopied'),\n            not(equals(activity('Load_From_stagingTo_ProductionTable').output.rowsCopied, null))\n        )\n    ),\n    activity('Load_From_stagingTo_ProductionTable').output.rowsCopied,\n    0\n)",
+								"type": "Expression"
+							},
 							"type": "Int64"
 						},
 						"SourceObject": {
-							"value": "",
+							"value": {
+								"value": "@pipeline().parameters.Stagingtable_name",
+								"type": "Expression"
+							},
 							"type": "String"
 						},
 						"SourceSystem": {
-							"value": "",
+							"value": {
+								"value": "@pipeline().parameters.Stagingtable_name",
+								"type": "Expression"
+							},
 							"type": "String"
 						},
 						"TargetSchema": {
-							"value": "",
+							"value": {
+								"value": "@pipeline().parameters.Proschema_name",
+								"type": "Expression"
+							},
 							"type": "String"
 						},
 						"TargetTable": {
-							"value": "",
+							"value": {
+								"value": "@pipeline().parameters.Prodtable_name",
+								"type": "Expression"
+							},
 							"type": "String"
 						},
 						"WatermarkColumn": {
-							"value": "",
+							"value": {
+								"value": "@activity('watermark').output.firstRow",
+								"type": "Expression"
+							},
 							"type": "String"
 						},
 						"WatermarkValue": {
-							"value": "",
+							"value": {
+								"value": "@activity('MAX_WaterMark').output.firstRow.MaxDate",
+								"type": "Expression"
+							},
 							"type": "DateTime"
 						}
 					}
