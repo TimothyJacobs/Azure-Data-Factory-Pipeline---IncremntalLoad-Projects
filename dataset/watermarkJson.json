@@ -1,0 +1,27 @@
+{
+	"name": "watermarkJson",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureDataLakeStorage1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "Json",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": "customer watermark",
+				"folderPath": "customer watermark",
+				"fileSystem": "gold"
+			}
+		},
+		"schema": {
+			"type": "object",
+			"properties": {
+				"lastupdateddate": {
+					"type": "string"
+				}
+			}
+		}
+	}
+}

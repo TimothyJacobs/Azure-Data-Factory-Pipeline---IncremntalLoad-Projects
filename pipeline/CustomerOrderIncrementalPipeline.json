@@ -1,0 +1,238 @@
+{
+	"name": "CustomerOrderIncrementalPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "watermark",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "JsonSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "JsonReadSettings"
+						}
+					},
+					"dataset": {
+						"referenceName": "watermarkJson",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "watermark_AuditTable",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "SELECT ISNULL(MAX(A.WATERMARKVALUE),'1900-01-01') AS LastWatermarkValue\nFROM [dbo].[ADF_LoadControl] A\nWHERE A.PipelineName = '@{pipeline().Pipeline}'",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "TrackPipelineLogs",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "CountRowsOfStagingTable",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "watermark",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "watermark_AuditTable",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": {
+								"value": "SELECT COUNT(*) AS TotalRows\nFROM @{pipeline().parameters.Stagingschema_name}.@{pipeline().parameters.Stagingtable_name}",
+								"type": "Expression"
+							}
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "CountRowsOfProTable",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "CountRowsOfStagingTable",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": {
+								"value": "SELECT COUNT(*) AS TotalRows\nFROM @{pipeline().parameters.Proschema_name}.@{pipeline().parameters.Prodtable_name}",
+								"type": "Expression"
+							}
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "ValidateStagingSchema",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "CountRowsOfProTable",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": {
+								"value": "SELECT\n    COUNT(*) AS SchemaMismatchCount\nFROM (\n    SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE\n    FROM INFORMATION_SCHEMA.COLUMNS\n    WHERE TABLE_SCHEMA = '@{pipeline().parameters.Stagingschema_name}'\n      AND TABLE_NAME = '@{pipeline().parameters.Stagingtable_name}'\n\n    EXCEPT\n\n    SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE\n    FROM INFORMATION_SCHEMA.COLUMNS\n    WHERE TABLE_SCHEMA = '@{pipeline().parameters.Proschema_name}'\n      AND TABLE_NAME = '@{pipeline().parameters.Prodtable_name}'\n) Diff",
+								"type": "Expression"
+							}
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "If Condition1",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "ValidateStagingSchema",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@and(\n    greater(\n        activity('CountRowsOfStagingTable').output.resultSets[0].rows[0].TotalRows,\n        activity('CountRowsOfProTable').output.resultSets[0].rows[0].TotalRows\n    ),\n    equals(\n        activity('ValidateStagingSchema').output.resultSets[0].rows[0].SchemaMismatchCount,\n        0\n    )\n)\n",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Set variable1",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "hello",
+								"value": {
+									"value": "hello",
+									"type": "Expression"
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"Stagingtable_name": {
+				"type": "string"
+			},
+			"Stagingschema_name": {
+				"type": "string"
+			},
+			"Prodtable_name": {
+				"type": "string"
+			},
+			"Proschema_name": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"hello": {
+				"type": "String",
+				"defaultValue": "hello"
+			}
+		},
+		"annotations": []
+	}
+}
