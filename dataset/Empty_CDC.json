@@ -1,0 +1,23 @@
+{
+	"name": "Empty_CDC",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureDataLakeStorage1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "Json",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": "emtyJson",
+				"folderPath": "watermark",
+				"fileSystem": "gold"
+			}
+		},
+		"schema": {
+			"type": "object"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

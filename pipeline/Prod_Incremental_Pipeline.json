@@ -1,0 +1,508 @@
+{
+	"name": "Prod_Incremental_Pipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "CaptureDateChangeJson",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "JsonSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "JsonReadSettings"
+						}
+					},
+					"dataset": {
+						"referenceName": "CaptureDateChange",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "CaptureDateChangeLogTable",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "SELECT ISNULL(MAX(WatermarkValue), '1900-01-01') AS LastWatermark\nFROM reportingDB.dbo.ADF_LoadControl\nWHERE LoadStatus = 'SUCCESS';",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "TrackPipelineLogs",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "CountRows_StaggingOrderTable",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "CaptureDateChangeJson",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "CaptureDateChangeLogTable",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": {
+								"value": "SELECT\t\t\t\tCOUNT (*) AS 'TotalCounts'\nFROM\t\t\t\tReportingDB.DBO.StagingOrders",
+								"type": "Expression"
+							}
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "Prod_CountRows",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "CountRows_StaggingOrderTable",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": {
+								"value": "SELECT\t\t\t\tCOUNT (*) AS 'TotalCounts'\nFROM\t\t\t\tReportingDB.DBO.Orders",
+								"type": "Expression"
+							}
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "If Condition1",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Schema Check",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@and(\n    greater(\n        activity('CountRows_StaggingOrderTable').output.resultSets[0].rows[0].TotalCounts,\n        activity('Prod_CountRows').output.resultSets[0].rows[0].TotalCounts\n    ),\n    equals(\n        activity('Schema Check').output.resultSets[0].rows[0].SchemaMismatchCount,\n        0\n    )\n)\n",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "CopyLoadData",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "SELECT *\nFROM ReportingDB.dbo.StagingOrders S\nWHERE S.InsertedDate >\n      CAST('@{activity('CaptureDateChangeJson').output.firstRow.lastupdateddate}' AS DATETIME2)\nAND   S.InsertedDate >\n      CAST('@{activity('CaptureDateChangeLogTable').output.firstRow.LastWatermark}' AS DATETIME2);\n",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "staggingOrderTable",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "ProdOrderTable",
+									"type": "DatasetReference"
+								}
+							]
+						},
+						{
+							"name": "MaxDate",
+							"type": "Lookup",
+							"dependsOn": [
+								{
+									"activity": "CopyLoadData",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "SELECT\t\t\t\tMAX(S.InsertedDate) 'MaxDate'\nFROM\t\t\t\tReportingDB.DBO.StagingOrders S",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "staggingOrderTable",
+									"type": "DatasetReference"
+								}
+							}
+						},
+						{
+							"name": "CaptureTheNewDate",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "MaxDate",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "JsonSource",
+									"additionalColumns": [
+										{
+											"name": "lastupdateddate",
+											"value": {
+												"value": "@activity('MaxDate').output.firstRow.MaxDate",
+												"type": "Expression"
+											}
+										}
+									],
+									"storeSettings": {
+										"type": "AzureBlobFSReadSettings",
+										"recursive": true,
+										"enablePartitionDiscovery": false
+									},
+									"formatSettings": {
+										"type": "JsonReadSettings"
+									}
+								},
+								"sink": {
+									"type": "JsonSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "JsonWriteSettings"
+									}
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "Empty_CDC",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "CaptureDateChange",
+									"type": "DatasetReference"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "Schema Check",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "Prod_CountRows",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": {
+								"value": "SELECT\n    COUNT(*) AS SchemaMismatchCount\nFROM (\n    SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE\n    FROM INFORMATION_SCHEMA.COLUMNS\n    WHERE TABLE_SCHEMA = 'dbo'\n      AND TABLE_NAME = 'StagingOrders'\n\n    EXCEPT\n\n    SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE\n    FROM INFORMATION_SCHEMA.COLUMNS\n    WHERE TABLE_SCHEMA = 'dbo'\n      AND TABLE_NAME = 'Orders'\n) Diff\n",
+								"type": "Expression"
+							}
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "UpdateADF_LoadTable",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "If Condition1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[usp_InsertADFLoadControl]",
+					"storedProcedureParameters": {
+						"ActivityName": {
+							"value": {
+								"value": "@pipeline().Pipeline",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"ErrorMessage": {
+							"value": {
+								"value": "@if(\n    contains(string(activity('CopyLoadData')), 'Succeeded'),\n    'Success',\n    if(\n        contains(string(activity('CopyLoadData')), 'Failed'),\n        activity('CopyLoadData').error.message,\n        'Success - No Data'\n    )\n)\n",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"LoadStatus": {
+							"value": {
+								"value": "@pipeline().TriggerType",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"LoadType": {
+							"value": {
+								"value": "@if(\n    contains(string(activity('CopyLoadData')), 'Succeeded'),\n    'Success',\n    if(\n        contains(string(activity('CopyLoadData')), 'Failed'),\n        activity('CopyLoadData').error.message,\n        'Success - No Data'\n    )\n)\n",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"PipelineName": {
+							"value": {
+								"value": "@pipeline().Pipeline",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"PipelineRunID": {
+							"value": {
+								"value": "@pipeline().RunId",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"RowsInserted": {
+							"value": {
+								"value": "@activity('CopyLoadData').output.rowsCopied",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						},
+						"RowsRead": {
+							"value": {
+								"value": "@activity('CopyLoadData').output.rowsRead",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						},
+						"RowsUpdated": {
+							"value": {
+								"value": "@activity('CopyLoadData').output.rowsCopied",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						},
+						"SourceObject": {
+							"value": {
+								"value": "@variables('StaggingTable_Name')",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"SourceSystem": {
+							"value": {
+								"value": "@variables('Database_Name')",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"TargetSchema": {
+							"value": {
+								"value": "@variables('Table_schema')",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"TargetTable": {
+							"value": {
+								"value": "@variables('Table_Name')",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"WatermarkColumn": {
+							"value": {
+								"value": "@activity('MaxDate').output.firstRow",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"WatermarkValue": {
+							"value": {
+								"value": "@activity('MaxDate').output.firstRow.MaxDate",
+								"type": "Expression"
+							},
+							"type": "DateTime"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"variables": {
+			"PipelineName": {
+				"type": "String",
+				"defaultValue": "Incremental"
+			},
+			"Table_schema": {
+				"type": "String",
+				"defaultValue": "dbo"
+			},
+			"Table_Name": {
+				"type": "String",
+				"defaultValue": "Orders"
+			},
+			"StaggingTable_Name": {
+				"type": "String",
+				"defaultValue": "StagingOrders"
+			},
+			"Database_Name": {
+				"type": "String",
+				"defaultValue": "ReportingDB"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-02-11T08:45:17Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

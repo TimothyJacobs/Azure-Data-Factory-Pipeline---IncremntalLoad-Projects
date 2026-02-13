@@ -1,0 +1,9 @@
+{
+	"name": "timmyadfpipelines",
+	"location": "southafricanorth",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "a7dc8f36-3e2a-4f9a-997f-375301b7b1bb",
+		"tenantId": "0283c171-7357-4ed0-af11-4308698f0227"
+	}
+}

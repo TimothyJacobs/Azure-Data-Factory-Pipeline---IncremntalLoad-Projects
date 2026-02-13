@@ -1,0 +1,102 @@
+{
+	"name": "TrackPipelineLogs",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "LoadControlID",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "PipelineName",
+				"type": "nvarchar"
+			},
+			{
+				"name": "PipelineRunID",
+				"type": "nvarchar"
+			},
+			{
+				"name": "ActivityName",
+				"type": "nvarchar"
+			},
+			{
+				"name": "SourceSystem",
+				"type": "nvarchar"
+			},
+			{
+				"name": "SourceObject",
+				"type": "nvarchar"
+			},
+			{
+				"name": "TargetSchema",
+				"type": "nvarchar"
+			},
+			{
+				"name": "TargetTable",
+				"type": "nvarchar"
+			},
+			{
+				"name": "LoadType",
+				"type": "varchar"
+			},
+			{
+				"name": "WatermarkColumn",
+				"type": "nvarchar"
+			},
+			{
+				"name": "WatermarkValue",
+				"type": "datetime2",
+				"scale": 7
+			},
+			{
+				"name": "RowsRead",
+				"type": "bigint",
+				"precision": 19
+			},
+			{
+				"name": "RowsInserted",
+				"type": "bigint",
+				"precision": 19
+			},
+			{
+				"name": "RowsUpdated",
+				"type": "bigint",
+				"precision": 19
+			},
+			{
+				"name": "LoadStatus",
+				"type": "varchar"
+			},
+			{
+				"name": "ErrorMessage",
+				"type": "nvarchar"
+			},
+			{
+				"name": "StartTime",
+				"type": "datetime2",
+				"scale": 7
+			},
+			{
+				"name": "EndTime",
+				"type": "datetime2",
+				"scale": 7
+			},
+			{
+				"name": "CreatedDate",
+				"type": "datetime2",
+				"scale": 7
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "ADF_LoadControl"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

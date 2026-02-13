@@ -1,0 +1,28 @@
+{
+	"name": "CaptureDateChange",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureDataLakeStorage1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "Json",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": "data.json",
+				"folderPath": "Capture Date Change",
+				"fileSystem": "gold"
+			}
+		},
+		"schema": {
+			"type": "object",
+			"properties": {
+				"lastupdateddate": {
+					"type": "string"
+				}
+			}
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}
