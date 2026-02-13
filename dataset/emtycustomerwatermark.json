@@ -1,0 +1,20 @@
+{
+	"name": "emtycustomerwatermark",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureDataLakeStorage1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "Json",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": "empty customer watermark",
+				"folderPath": "customer watermark",
+				"fileSystem": "gold"
+			}
+		},
+		"schema": {}
+	}
+}

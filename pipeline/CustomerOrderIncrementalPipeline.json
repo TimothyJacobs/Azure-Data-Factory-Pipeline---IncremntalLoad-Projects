@@ -193,21 +193,183 @@
 					},
 					"ifTrueActivities": [
 						{
-							"name": "Set variable1",
-							"type": "SetVariable",
+							"name": "Load_From_stagingTo_ProductionTable",
+							"type": "Copy",
 							"dependsOn": [],
 							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
 								"secureOutput": false,
 								"secureInput": false
 							},
 							"userProperties": [],
 							"typeProperties": {
-								"variableName": "hello",
-								"value": {
-									"value": "hello",
-									"type": "Expression"
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "SELECT *\nFROM @{pipeline().parameters.Stagingschema_name}.@{pipeline().parameters.Stagingtable_name}\nWHERE LOADDATE > @{activity('watermark').output.firstRow.LOADDATE}\nAND LOADDATE > @{activity('watermark_AuditTable').output.firstRow.LOADDATE}",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "StaggingTable",
+									"type": "DatasetReference",
+									"parameters": {
+										"table_name": {
+											"value": "@pipeline().parameters.Stagingtable_name",
+											"type": "Expression"
+										},
+										"table_schema": {
+											"value": "@pipeline().parameters.Stagingschema_name",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "ProductionTable",
+									"type": "DatasetReference",
+									"parameters": {
+										"table_name": {
+											"value": "@pipeline().parameters.Prodtable_name",
+											"type": "Expression"
+										},
+										"table_schema": {
+											"value": "@pipeline().parameters.Proschema_name",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "MAX_WaterMark",
+							"type": "Lookup",
+							"dependsOn": [
+								{
+									"activity": "Load_From_stagingTo_ProductionTable",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "SELECT MAX(LOADDATE) AS 'MaxDate'\nFROM @{pipeline().parameters.Stagingschema_name}.@{pipeline().parameters.Stagingtable_name}\n",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "StaggingTable",
+									"type": "DatasetReference",
+									"parameters": {
+										"table_name": {
+											"value": "@pipeline().parameters.Stagingtable_name",
+											"type": "Expression"
+										},
+										"table_schema": {
+											"value": "@pipeline().parameters.Stagingtable_name",
+											"type": "Expression"
+										}
+									}
 								}
 							}
+						},
+						{
+							"name": "UpdateJsonWatermark",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "MAX_WaterMark",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "JsonSource",
+									"additionalColumns": [
+										{
+											"name": "lastupdateddate",
+											"value": {
+												"value": "@activity('MAX_WaterMark').output.firstRow",
+												"type": "Expression"
+											}
+										}
+									],
+									"storeSettings": {
+										"type": "AzureBlobFSReadSettings",
+										"recursive": true,
+										"enablePartitionDiscovery": false
+									},
+									"formatSettings": {
+										"type": "JsonReadSettings"
+									}
+								},
+								"sink": {
+									"type": "JsonSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "JsonWriteSettings"
+									}
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "emtycustomerwatermark",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "watermarkJson",
+									"type": "DatasetReference"
+								}
+							]
 						}
 					]
 				}
