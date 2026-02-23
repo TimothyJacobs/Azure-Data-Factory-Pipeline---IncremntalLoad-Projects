@@ -1,0 +1,17 @@
+{
+	"name": "AzureSqlDatabase2",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"annotations": [],
+		"type": "AzureSqlDatabase",
+		"typeProperties": {
+			"server": "timmysqlmaster.database.windows.net",
+			"database": "ReportingDB",
+			"encrypt": "mandatory",
+			"trustServerCertificate": true,
+			"authenticationType": "SQL",
+			"userName": "Timmysql",
+			"encryptedCredential": "ew0KICAiVmVyc2lvbiI6ICIyMDE3LTExLTMwIiwNCiAgIlByb3RlY3Rpb25Nb2RlIjogIktleSIsDQogICJTZWNyZXRDb250ZW50VHlwZSI6ICJQbGFpbnRleHQiLA0KICAiQ3JlZGVudGlhbElkIjogIkRBVEFGQUNUT1JZQDc2MzQ2REI4LUI3MzYtNDY0NC05MTkxLTFFM0YyRTEwMkYwNl82NzFhZmQ0My0yMWQyLTRmYWYtOTkyYS03OWUxMmNlYzY1ZjAiDQp9"
+		}
+	}
+}
