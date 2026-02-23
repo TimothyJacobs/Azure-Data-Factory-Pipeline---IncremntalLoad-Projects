@@ -139,7 +139,7 @@
 				}
 			},
 			{
-				"name": "Script1",
+				"name": "SchemaChecker",
 				"type": "Script",
 				"dependsOn": [
 					{
@@ -157,16 +157,228 @@
 					"secureInput": false
 				},
 				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
 				"typeProperties": {
-					"scripts": [],
+					"scripts": [
+						{
+							"type": "Query",
+							"text": {
+								"value": "@{concat('\nSELECT COUNT(*) AS SchemaMismatchCount\nFROM (\n    SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE\n    FROM INFORMATION_SCHEMA.COLUMNS\n    WHERE TABLE_SCHEMA = ''', pipeline().parameters.table_schema, '''\n      AND TABLE_NAME = ''', pipeline().parameters.st_table_name, '''\n    EXCEPT\n    SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE\n    FROM INFORMATION_SCHEMA.COLUMNS\n    WHERE TABLE_SCHEMA = ''', pipeline().parameters.table_schema, '''\n      AND TABLE_NAME = ''', pipeline().parameters.table_name, '''\n) Diff')}",
+								"type": "Expression"
+							}
+						}
+					],
 					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "If Condition1",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "SchemaChecker",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@and(\n  greater(activity('stg_RowCount').output.resultSets[0].rows[0].RowCount, activity('Prod_RowCount').output.resultSets[0].rows[0].RowCount),\n  equals(activity('SchemaChecker').output.resultSets[0].rows[0].SchemaMismatchCount, 0)\n)",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "LoadData",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 3,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "@{concat('\nSELECT *\nFROM [', pipeline().parameters.table_schema, '].[', pipeline().parameters.st_table_name, ']\nWHERE InsertedDate > ''', activity('watermark_logTable').output.firstRow.LastWatermarkValue, '''\n  AND InsertedDate > ''', activity('watermark_Json').output.firstRow.lastupdateddate, ''''\n)}",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "StagingTable",
+									"type": "DatasetReference",
+									"parameters": {
+										"table_name": {
+											"value": "@pipeline().parameters.st_table_name",
+											"type": "Expression"
+										},
+										"table_schema": {
+											"value": "@pipeline().parameters.table_schema",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "Prod_Table",
+									"type": "DatasetReference",
+									"parameters": {
+										"table_name": {
+											"value": "@pipeline().parameters.table_name",
+											"type": "Expression"
+										},
+										"table_schema": {
+											"value": "@pipeline().parameters.table_schema",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "MaxDate",
+							"type": "Lookup",
+							"dependsOn": [
+								{
+									"activity": "LoadData",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "@{concat('\nSELECT MAX(InsertedDate) AS [MaxDate]\nFROM [', pipeline().parameters.table_schema, '].[', pipeline().parameters.st_table_name, ']'\n)}",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "StagingTable",
+									"type": "DatasetReference",
+									"parameters": {
+										"table_name": {
+											"value": "@pipeline().parameters.st_table_name",
+											"type": "Expression"
+										},
+										"table_schema": {
+											"value": "@pipeline().parameters.table_schema",
+											"type": "Expression"
+										}
+									}
+								}
+							}
+						},
+						{
+							"name": "CaptureNewWaterMark",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "MaxDate",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "JsonSource",
+									"additionalColumns": [
+										{
+											"name": "lastupdateddate",
+											"value": {
+												"value": "@activity('MaxDate').output.firstRow.MaxDate",
+												"type": "Expression"
+											}
+										}
+									],
+									"storeSettings": {
+										"type": "AzureBlobFSReadSettings",
+										"recursive": true,
+										"enablePartitionDiscovery": false
+									},
+									"formatSettings": {
+										"type": "JsonReadSettings"
+									}
+								},
+								"sink": {
+									"type": "JsonSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "JsonWriteSettings"
+									}
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "emptywatermark",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "watermark",
+									"type": "DatasetReference"
+								}
+							]
+						}
+					]
 				}
 			}
 		],
 		"parameters": {
 			"table_name": {
 				"type": "string",
-				"defaultValue": "fact_Legal"
+				"defaultValue": "FactLegal"
 			},
 			"table_schema": {
 				"type": "string",
@@ -175,6 +387,12 @@
 			"st_table_name": {
 				"type": "string",
 				"defaultValue": "stg_FactLegal"
+			}
+		},
+		"variables": {
+			"hello": {
+				"type": "String",
+				"defaultValue": "test"
 			}
 		},
 		"annotations": []
