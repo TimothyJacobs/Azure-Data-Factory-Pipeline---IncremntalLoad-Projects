@@ -33,7 +33,7 @@
 				}
 			},
 			{
-				"name": "Lookup1",
+				"name": "watermark_logTable",
 				"type": "Lookup",
 				"dependsOn": [],
 				"policy": {
@@ -47,6 +47,10 @@
 				"typeProperties": {
 					"source": {
 						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "SELECT ISNULL(MAX(A.WATERMARKVALUE),'1900-01-01') AS LastWatermarkValue\nFROM [dbo].[ADF_LoadControl] A\nWHERE A.PipelineName = '@{pipeline().Pipeline}'",
+							"type": "Expression"
+						},
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
@@ -55,18 +59,122 @@
 						"type": "DatasetReference"
 					}
 				}
+			},
+			{
+				"name": "stg_RowCount",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "watermark_Json",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "watermark_logTable",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": {
+								"value": "@{concat('SELECT COUNT(*) AS [RowCount] FROM [', pipeline().parameters.table_schema, '].[', pipeline().parameters.st_table_name, ']')}",
+								"type": "Expression"
+							}
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "Prod_RowCount",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "stg_RowCount",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": {
+								"value": "@{concat('SELECT COUNT(*) AS [RowCount] FROM [', pipeline().parameters.table_schema, '].[', pipeline().parameters.table_name, ']')}",
+								"type": "Expression"
+							}
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "Script1",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "Prod_RowCount",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"scripts": [],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
 			}
 		],
 		"parameters": {
 			"table_name": {
-				"type": "string"
+				"type": "string",
+				"defaultValue": "fact_Legal"
 			},
 			"table_schema": {
 				"type": "string",
 				"defaultValue": "dbo"
 			},
 			"st_table_name": {
-				"type": "string"
+				"type": "string",
+				"defaultValue": "stg_FactLegal"
 			}
 		},
 		"annotations": []
