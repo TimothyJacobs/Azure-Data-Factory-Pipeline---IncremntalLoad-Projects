@@ -377,13 +377,11 @@
 			{
 				"name": "UpdateLogTable",
 				"type": "SqlServerStoredProcedure",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "If Condition1",
 						"dependencyConditions": [
-							"Succeeded"
+							"Completed"
 						]
 					}
 				],
@@ -406,12 +404,15 @@
 							"type": "String"
 						},
 						"ErrorMessage": {
-							"value": "",
+							"value": {
+								"value": "@if(\n    or(\n        equals(activity('LoadData'), null),\n        not(contains(activity('LoadData'), 'error'))\n    ),\n    'Success',\n    concat(\n        'ErrorCode: ', coalesce(activity('LoadData').error.errorCode, 'Failed'),\n        ' | Message: ', coalesce(activity('LoadData').error.message, 'Failed'),\n        ' | FailureType: ', coalesce(activity('LoadData').error.failureType, 'Failed')\n    )\n)",
+								"type": "Expression"
+							},
 							"type": "String"
 						},
 						"LoadStatus": {
 							"value": {
-								"value": "@if(\n    greater(\n        if(\n            or(\n                equals(activity('LoadData').output.rowsCopied, null),\n                not(contains(activity('LoadData').output, 'rowsCopied'))\n            ),\n            0,\n            activity('LoadData').output.rowsCopied\n        ),\n        0\n    ),\n    'Success',\n    'No New Data'\n)",
+								"value": "@if(\n    or(\n        equals(activity('LoadData'), null),\n        or(\n            not(contains(activity('LoadData'), 'output')),\n            not(contains(activity('LoadData').output, 'rowsCopied'))\n        )\n    ),\n    'No New Data',\n    if(\n        greater(activity('LoadData').output.rowsCopied, 0),\n        'Success',\n        'No New Data'\n    )\n)",
 								"type": "Expression"
 							},
 							"type": "String"
@@ -439,20 +440,23 @@
 						},
 						"RowsInserted": {
 							"value": {
-								"value": "@if(\n    or(\n        equals(activity('LoadData').output.rowsCopied, null),\n        not(contains(activity('LoadData').output, 'rowsCopied'))\n    ),\n    0,\n    activity('LoadData').output.rowsCopied\n)",
+								"value": "@if(\n    or(\n        equals(activity('LoadData'), null),\n        or(\n            not(contains(activity('LoadData'), 'output')),\n            not(contains(activity('LoadData').output, 'rowsCopied'))\n        )\n    ),\n    0,\n    activity('LoadData').output.rowsCopied\n)",
 								"type": "Expression"
 							},
 							"type": "Int64"
 						},
 						"RowsRead": {
 							"value": {
-								"value": "@if(\n    or(\n        equals(activity('LoadData').output.rowsRead, null),\n        not(contains(activity('LoadData').output, 'rowsRead'))\n    ),\n    0,\n    activity('LoadData').output.rowsRead\n)",
+								"value": "@if(\n    or(\n        equals(activity('LoadData'), null),\n        or(\n            not(contains(activity('LoadData'), 'output')),\n            not(contains(activity('LoadData').output, 'rowsRead'))\n        )\n    ),\n    0,\n    activity('LoadData').output.rowsRead\n)",
 								"type": "Expression"
 							},
 							"type": "Int64"
 						},
 						"RowsUpdated": {
-							"value": "",
+							"value": {
+								"value": "@if(\n    or(\n        equals(activity('LoadData'), null),\n        or(\n            not(contains(activity('LoadData'), 'output')),\n            not(contains(activity('LoadData').output, 'rowsCopied'))\n        )\n    ),\n    0,\n    activity('LoadData').output.rowsCopied\n)",
+								"type": "Expression"
+							},
 							"type": "Int64"
 						},
 						"SourceObject": {
