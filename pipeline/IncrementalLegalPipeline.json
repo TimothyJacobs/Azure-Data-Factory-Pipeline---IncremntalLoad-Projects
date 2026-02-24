@@ -406,15 +406,21 @@
 							"type": "String"
 						},
 						"ErrorMessage": {
-							"value": null,
+							"value": "",
 							"type": "String"
 						},
 						"LoadStatus": {
-							"value": null,
+							"value": {
+								"value": "@if(\n    greater(\n        if(\n            or(\n                equals(activity('LoadData').output.rowsCopied, null),\n                not(contains(activity('LoadData').output, 'rowsCopied'))\n            ),\n            0,\n            activity('LoadData').output.rowsCopied\n        ),\n        0\n    ),\n    'Success',\n    'No New Data'\n)",
+								"type": "Expression"
+							},
 							"type": "String"
 						},
 						"LoadType": {
-							"value": null,
+							"value": {
+								"value": "@pipeline().TriggerName",
+								"type": "Expression"
+							},
 							"type": "String"
 						},
 						"PipelineName": {
@@ -432,15 +438,21 @@
 							"type": "String"
 						},
 						"RowsInserted": {
-							"value": null,
+							"value": {
+								"value": "@if(\n    or(\n        equals(activity('LoadData').output.rowsCopied, null),\n        not(contains(activity('LoadData').output, 'rowsCopied'))\n    ),\n    0,\n    activity('LoadData').output.rowsCopied\n)",
+								"type": "Expression"
+							},
 							"type": "Int64"
 						},
 						"RowsRead": {
-							"value": null,
+							"value": {
+								"value": "@if(\n    or(\n        equals(activity('LoadData').output.rowsRead, null),\n        not(contains(activity('LoadData').output, 'rowsRead'))\n    ),\n    0,\n    activity('LoadData').output.rowsRead\n)",
+								"type": "Expression"
+							},
 							"type": "Int64"
 						},
 						"RowsUpdated": {
-							"value": null,
+							"value": "",
 							"type": "Int64"
 						},
 						"SourceObject": {
