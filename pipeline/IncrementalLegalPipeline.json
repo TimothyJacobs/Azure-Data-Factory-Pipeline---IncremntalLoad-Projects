@@ -8,8 +8,8 @@
 				"dependsOn": [],
 				"policy": {
 					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
+					"retry": 2,
+					"retryIntervalInSeconds": 60,
 					"secureOutput": false,
 					"secureInput": false
 				},
@@ -38,8 +38,8 @@
 				"dependsOn": [],
 				"policy": {
 					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
+					"retry": 2,
+					"retryIntervalInSeconds": 60,
 					"secureOutput": false,
 					"secureInput": false
 				},
@@ -78,8 +78,8 @@
 					}
 				],
 				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
+					"timeout": "01:00:00",
+					"retry": 2,
 					"retryIntervalInSeconds": 30,
 					"secureOutput": false,
 					"secureInput": false
@@ -114,8 +114,8 @@
 					}
 				],
 				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
+					"timeout": "01:00:00",
+					"retry": 2,
 					"retryIntervalInSeconds": 30,
 					"secureOutput": false,
 					"secureInput": false
@@ -150,8 +150,8 @@
 					}
 				],
 				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
+					"timeout": "01:00:00",
+					"retry": 2,
 					"retryIntervalInSeconds": 30,
 					"secureOutput": false,
 					"secureInput": false
@@ -197,9 +197,9 @@
 							"type": "Copy",
 							"dependsOn": [],
 							"policy": {
-								"timeout": "0.12:00:00",
+								"timeout": "00.1:00:00",
 								"retry": 3,
-								"retryIntervalInSeconds": 30,
+								"retryIntervalInSeconds": 3600,
 								"secureOutput": false,
 								"secureInput": false
 							},
@@ -220,6 +220,21 @@
 									"sqlWriterUseTableLock": false
 								},
 								"enableStaging": false,
+								"validateDataConsistency": true,
+								"logSettings": {
+									"enableCopyActivityLog": true,
+									"copyActivityLogSettings": {
+										"logLevel": "Warning",
+										"enableReliableLogging": false
+									},
+									"logLocationSettings": {
+										"linkedServiceName": {
+											"referenceName": "AzureDataLakeStorage1",
+											"type": "LinkedServiceReference"
+										},
+										"path": "bronze/OnlineSales"
+									}
+								},
 								"translator": {
 									"type": "TabularTranslator",
 									"typeConversion": true,
