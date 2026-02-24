@@ -373,6 +373,124 @@
 						}
 					]
 				}
+			},
+			{
+				"name": "UpdateLogTable",
+				"type": "SqlServerStoredProcedure",
+				"state": "Inactive",
+				"onInactiveMarkAs": "Succeeded",
+				"dependsOn": [
+					{
+						"activity": "If Condition1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[usp_InsertADFLoadControl]",
+					"storedProcedureParameters": {
+						"ActivityName": {
+							"value": {
+								"value": "@pipeline().Pipeline",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"ErrorMessage": {
+							"value": null,
+							"type": "String"
+						},
+						"LoadStatus": {
+							"value": null,
+							"type": "String"
+						},
+						"LoadType": {
+							"value": null,
+							"type": "String"
+						},
+						"PipelineName": {
+							"value": {
+								"value": "@pipeline().Pipeline",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"PipelineRunID": {
+							"value": {
+								"value": "@pipeline().RunId",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"RowsInserted": {
+							"value": null,
+							"type": "Int64"
+						},
+						"RowsRead": {
+							"value": null,
+							"type": "Int64"
+						},
+						"RowsUpdated": {
+							"value": null,
+							"type": "Int64"
+						},
+						"SourceObject": {
+							"value": {
+								"value": "@pipeline().parameters.st_table_name",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"SourceSystem": {
+							"value": {
+								"value": "@pipeline().parameters.st_table_name",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"TargetSchema": {
+							"value": {
+								"value": "@pipeline().parameters.table_schema",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"TargetTable": {
+							"value": {
+								"value": "@pipeline().parameters.table_name",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"WatermarkColumn": {
+							"value": {
+								"value": "@activity('watermark_logTable').output.firstRow",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"WatermarkValue": {
+							"value": {
+								"value": "@activity('watermark_Json').output.firstRow.lastupdateddate",
+								"type": "Expression"
+							},
+							"type": "DateTime"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase2",
+					"type": "LinkedServiceReference"
+				}
 			}
 		],
 		"parameters": {
