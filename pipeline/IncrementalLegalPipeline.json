@@ -420,7 +420,7 @@
 						},
 						"ErrorMessage": {
 							"value": {
-								"value": "@if(\n    or(\n        equals(activity('LoadData'), null),\n        not(contains(activity('LoadData'), 'error'))\n    ),\n    if(\n        equals(activity('LoadData'), null),\n        if(\n            greater(activity('stg_RowCount').output.resultSets[0].rows[0].RowCount, activity('Prod_RowCount').output.resultSets[0].rows[0].RowCount),\n            'Skipped — Schema mismatch detected',\n            'Skipped — Staging row count not greater than production'\n        ),\n        'Success'\n    ),\n    concat(\n        'ErrorCode: ', coalesce(activity('LoadData').error.errorCode, 'Failed'),\n        ' | Message: ', coalesce(activity('LoadData').error.message, 'Failed'),\n        ' | FailureType: ', coalesce(activity('LoadData').error.failureType, 'Failed')\n    )\n)",
+								"value": "@if(\n    or(\n        equals(activity('LoadData'), null),\n        not(contains(activity('LoadData'), 'error'))\n    ),\n    if(\n        equals(activity('LoadData'), null),\n        if(\n            greater(activity('stg_RowCount').output.resultSets[0].rows[0].RowCount, activity('Prod_RowCount').output.resultSets[0].rows[0].RowCount),\n            'Skipped — Schema mismatch detected',\n            'Skipped — Staging row count not greater than production'\n        ),\n        'Success'\n    ),\n    string(activity('LoadData').error)\n)",
 								"type": "Expression"
 							},
 							"type": "String"
