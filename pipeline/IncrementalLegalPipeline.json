@@ -545,12 +545,6 @@
 				"defaultValue": "stg_FactLegal"
 			}
 		},
-		"variables": {
-			"hello": {
-				"type": "String",
-				"defaultValue": "test"
-			}
-		},
 		"annotations": []
 	}
 }
