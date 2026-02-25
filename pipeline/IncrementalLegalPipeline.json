@@ -197,9 +197,9 @@
 							"type": "Copy",
 							"dependsOn": [],
 							"policy": {
-								"timeout": "00.1:00:00",
+								"timeout": "00.01:00:00",
 								"retry": 3,
-								"retryIntervalInSeconds": 3600,
+								"retryIntervalInSeconds": 300,
 								"secureOutput": false,
 								"secureInput": false
 							},
@@ -401,9 +401,9 @@
 					}
 				],
 				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
+					"timeout": "0.00:30:00",
+					"retry": 2,
+					"retryIntervalInSeconds": 120,
 					"secureOutput": false,
 					"secureInput": false
 				},
@@ -420,7 +420,7 @@
 						},
 						"ErrorMessage": {
 							"value": {
-								"value": "@if(\n    or(\n        equals(activity('LoadData'), null),\n        not(contains(activity('LoadData'), 'error'))\n    ),\n    'Success',\n    concat(\n        'ErrorCode: ', coalesce(activity('LoadData').error.errorCode, 'Failed'),\n        ' | Message: ', coalesce(activity('LoadData').error.message, 'Failed'),\n        ' | FailureType: ', coalesce(activity('LoadData').error.failureType, 'Failed')\n    )\n)",
+								"value": "@if(\n    or(\n        equals(activity('LoadData'), null),\n        not(contains(activity('LoadData'), 'error'))\n    ),\n    if(\n        equals(activity('LoadData'), null),\n        if(\n            greater(activity('stg_RowCount').output.resultSets[0].rows[0].RowCount, activity('Prod_RowCount').output.resultSets[0].rows[0].RowCount),\n            'Skipped — Schema mismatch detected',\n            'Skipped — Staging row count not greater than production'\n        ),\n        'Success'\n    ),\n    concat(\n        'ErrorCode: ', coalesce(activity('LoadData').error.errorCode, 'Failed'),\n        ' | Message: ', coalesce(activity('LoadData').error.message, 'Failed'),\n        ' | FailureType: ', coalesce(activity('LoadData').error.failureType, 'Failed')\n    )\n)",
 								"type": "Expression"
 							},
 							"type": "String"
@@ -515,6 +515,13 @@
 								"type": "Expression"
 							},
 							"type": "DateTime"
+						},
+						"VerificationResult": {
+							"value": {
+								"value": "@if(or(equals(activity('LoadData'), null), not(contains(activity('LoadData'), 'output'))), 'NotRun', activity('LoadData').output.dataConsistencyVerification.VerificationResult)",
+								"type": "Expression"
+							},
+							"type": "String"
 						}
 					}
 				},
